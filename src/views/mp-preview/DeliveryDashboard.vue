@@ -124,17 +124,26 @@
         </div>
       </div>
     </div>
+    
+    <!-- 追加产品/技术规格文档查看悬浮按钮 -->
+    <DocViewer title="小程序管理看板" :docs="docs" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import DocViewer from '@/components/DocViewer.vue'
+import prdRaw from '../../../docs/modules/配送小程序_管理看板/PRD.md?raw'
+import specRaw from '../../../docs/modules/配送小程序_管理看板/Spec.md?raw'
+import iaRaw from '../../../docs/modules/配送小程序_管理看板/IA.md?raw'
+
 import BatchCardRunning from './components/BatchCardRunning.vue'
 import BatchCardWaiting from './components/BatchCardWaiting.vue'
 import BatchCardFinished from './components/BatchCardFinished.vue'
 
 const router = useRouter()
+const docs = { prd: prdRaw, spec: specRaw, ia: iaRaw }
 
 // ===== 核心数据定义 =====
 const CACHE_KEY = 'mp_last_view_zone_id'
