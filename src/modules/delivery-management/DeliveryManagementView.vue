@@ -156,34 +156,59 @@ const onConfigStaffSelectionChange = (rows) => {
 
 const canConfigScope = (row) => !row.roles.includes('SIGNER')
 
-const configFormFloorOptions = computed(() => configHallForm.areas.flatMap((area) =>
-  (floorsByArea[area] || []).map((floor) => ({
-    label: `${area} / ${floor}`,
-    value: `${area}|${floor}`
-  }))
-))
-
-const configFormHallOptions = computed(() => configHallForm.floors.flatMap((value) => {
-  const [area, floor] = value.split('|')
-  return getHallCandidates(area, floor).map((hall) => ({
-    label: `${area} / ${floor} / ${hall}`,
-    value: `${area}|${floor}|${hall}`
-  }))
-}))
-
-watch(() => [...configHallForm.areas], (areaValues) => {
-  const allowed = new Set(areaValues.flatMap((area) => (floorsByArea[area] || []).map((floor) => `${area}|${floor}`)))
-  configHallForm.floors = configHallForm.floors.filter((value) => allowed.has(value))
+const configFormFloorOptions = computed(() => {
+  if (!configHallForm.areaFilter) return []
+  return floorsByArea[configHallForm.areaFilter] || []
 })
 
-watch(() => [...configHallForm.floors], (floorValues) => {
-  const allowed = new Set(
-    floorValues.flatMap((value) => {
-      const [area, floor] = value.split('|')
-      return getHallCandidates(area, floor).map((hall) => `${area}|${floor}|${hall}`)
+const configFormHallOptions = computed(() => {
+  if (!configHallForm.areaFilter) return []
+  let floors = configHallForm.floorFilter ? [configHallForm.floorFilter] : (floorsByArea[configHallForm.areaFilter] || [])
+  return floors.flatMap(floor => {
+    return getHallCandidates(configHallForm.areaFilter, floor).map(hall => ({
+      label: `${configHallForm.areaFilter} / ${floor} / ${hall}`,
+      value: `${configHallForm.areaFilter}|${floor}|${hall}`,
+      hallName: hall
+    }))
+  })
+})
+
+const unassignedHallsVisible = ref(false)
+const unassignedMerchantsVisible = ref(false)
+
+const unassignedHallsList = computed(() => {
+  const staffScopeCounts = {}
+  staffList.value.forEach(s => {
+    s.scopeHalls.forEach(h => {
+      staffScopeCounts[h] = (staffScopeCounts[h] || 0) + 1
     })
-  )
-  configHallForm.halls = configHallForm.halls.filter((value) => allowed.has(value))
+  })
+  
+  return allHalls.map(h => {
+    const key = `${h.area}|${h.floor}|${h.hall}`
+    return {
+      name: key,
+      count: staffScopeCounts[key] || 0
+    }
+  }).sort((a, b) => a.count - b.count)
+})
+
+const unassignedMerchantsList = computed(() => {
+  const staffScopeCounts = {}
+  staffList.value.forEach(s => {
+    s.scopeMerchants.forEach(m => {
+      staffScopeCounts[m] = (staffScopeCounts[m] || 0) + 1
+    })
+  })
+
+  return merchantPool.map(m => {
+    return {
+      id: m.id,
+      name: m.name,
+      area: m.area,
+      count: staffScopeCounts[m.id] || 0
+    }
+  }).sort((a, b) => a.count - b.count)
 })
 
 const getHallCandidates = (area, floor) => {
@@ -333,10 +358,6 @@ const saveRoles = () => {
     ElMessage.warning('每个员工必须至少保留一个角色')
     return
   }
-  if (roleForm.roles.includes('COURIER') && roleForm.roles.includes('SIGNER')) {
-    ElMessage.error('分拣签收员和配送员互斥，不能同时担任')
-    return
-  }
 
   const staff = staffList.value.find((item) => item.id === roleForm.staffId)
   if (staff) {
@@ -347,35 +368,26 @@ const saveRoles = () => {
 }
 
 const openConfigHallDialog = () => {
-  configHallForm.areas = []
-  configHallForm.floors = []
+  configHallForm.areaFilter = ''
+  configHallForm.floorFilter = ''
   configHallForm.halls = []
   configHallDialogVisible.value = true
 }
 
+const selectAllHalls = () => {
+  const currentOptions = configFormHallOptions.value.map(opt => opt.value)
+  const currentSet = new Set(configHallForm.halls)
+  currentOptions.forEach(val => currentSet.add(val))
+  configHallForm.halls = Array.from(currentSet)
+}
+
 const submitConfigHall = () => {
-  if (!configHallForm.areas.length) {
-    ElMessage.warning('至少选择一个展区')
+  if (!configHallForm.halls.length) {
+    ElMessage.warning('请勾选需要指派的具体展厅')
     return
   }
-  const hallsToAssign = new Set()
   
-  if (!configHallForm.floors.length) {
-    configHallForm.areas.forEach((area) => {
-      Object.entries(locationTree[area] || {}).forEach(([floor, halls]) => {
-        halls.forEach((hall) => hallsToAssign.add(`${area}|${floor}|${hall}`))
-      })
-    })
-  } else if (!configHallForm.halls.length) {
-    configHallForm.floors.forEach((value) => {
-      const [area, floor] = value.split('|')
-      getHallCandidates(area, floor).forEach((hall) => hallsToAssign.add(`${area}|${floor}|${hall}`))
-    })
-  } else {
-    configHallForm.halls.forEach(h => hallsToAssign.add(h))
-  }
-
-  const hallArray = Array.from(hallsToAssign)
+  const hallArray = Array.from(new Set(configHallForm.halls))
   selectedConfigStaffIds.value.forEach(staffId => {
     const staff = staffList.value.find(s => s.id === staffId)
     if (staff) {
@@ -383,7 +395,7 @@ const submitConfigHall = () => {
     }
   })
   configHallDialogVisible.value = false
-  ElMessage.success(`成功为 ${selectedConfigStaffIds.value.length} 名配送员配置主责展厅`)
+  ElMessage.success(`成功为选中人员覆盖配置 ${hallArray.length} 个展厅`)
 }
 
 const configMerchantFilteredPool = computed(() => {
@@ -476,14 +488,25 @@ const submitConfigMerchant = () => {
                   placeholder="快速定位展厅..."
                   class="w-full max-w-[200px]"
                 />
-                <el-input
+                <el-select
                   v-model="configFilter.merchantKeyword"
+                  filterable
+                  remote
                   clearable
-                  placeholder="商家名称筛选 (如：肯德基)"
-                  class="w-full max-w-[220px]"
+                  :remote-method="(query) => { configFilter.merchantKeyword = query }"
+                  placeholder="商家联想选择器 (可输入名称/拼音)"
+                  class="w-full max-w-[280px]"
                 >
-                  <template #prefix><el-icon><Search /></el-icon></template>
-                </el-input>
+                  <el-option
+                    v-for="item in merchantPool"
+                    :key="item.id"
+                    :label="item.name"
+                    :value="item.name"
+                  />
+                  <template #prefix>
+                    <el-icon><Search /></el-icon>
+                  </template>
+                </el-select>
               </div>
             </div>
           </div>
@@ -491,7 +514,9 @@ const submitConfigMerchant = () => {
           <div class="grid gap-6 xl:grid-cols-[1fr]">
             <div class="flex flex-col gap-3">
               <div class="flex items-center justify-between px-1">
-                <div class="text-sm font-semibold text-slate-800">配送员主责配置表</div>
+                <div class="flex items-center gap-3">
+                  <div class="text-sm font-semibold text-slate-800">配送员主责配置表</div>
+                </div>
                 <div class="flex gap-3">
                   <el-button 
                     type="primary" 
@@ -762,10 +787,9 @@ const submitConfigMerchant = () => {
 
     <el-dialog v-model="roleDialogVisible" title="配置人员角色" width="480px">
       <div class="mb-4 rounded-lg bg-blue-50 p-3 text-xs leading-relaxed text-blue-800 ring-1 ring-inset ring-blue-600/20">
-        <strong class="font-semibold">角色互斥规则：</strong><br/>
+        <strong class="font-semibold">角色分配规则：</strong><br/>
         1. 必须至少保留一个角色。<br/>
-        2. <span class="text-red-600 font-semibold">【分拣签收员】与【配送员】互斥</span>，不可兼任。<br/>
-        3. 【配送主管】可与前置任意一项叠加兼任。
+        2. 【配送主管】可兼任多个角色。
       </div>
       <el-form label-position="top">
         <el-form-item label="人员">
@@ -800,42 +824,93 @@ const submitConfigMerchant = () => {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="configHallDialogVisible" title="批量配置关联展厅" width="540px" destroy-on-close>
-      <div class="grid gap-5 mb-2">
+    <el-dialog v-model="configHallDialogVisible" title="配置关联展厅" width="540px" top="5vh" destroy-on-close>
+      <div class="text-xs text-slate-500 mb-4 bg-blue-50/50 p-3 rounded-lg border border-blue-100 leading-relaxed flex items-center justify-between gap-4">
+        <span>此操作将全量覆盖选中人员的责任展厅点位，<span class="font-bold text-red-600">原有配置将被清空并替换</span>，请谨慎操作。</span>
+        <el-button type="primary" link @click="unassignedHallsVisible = true" class="shrink-0 flex items-center !h-auto !p-0">
+          <span class="font-medium underline underline-offset-2 decoration-blue-300 hover:decoration-blue-500">查询展厅点位人员配置</span>
+        </el-button>
+      </div>
+      <div class="grid gap-5 mb-2 border rounded-xl p-4 bg-slate-50/50">
         <div>
-          <div class="mb-3 text-[13px] font-semibold text-slate-800 flex items-center gap-2">展区筛选 (必选)</div>
-          <el-checkbox-group v-model="configHallForm.areas" class="flex flex-wrap gap-x-4 gap-y-2">
-            <el-checkbox v-for="item in areas" :key="item" :label="item">{{ item }}</el-checkbox>
-          </el-checkbox-group>
+          <div class="mb-3 text-[13px] font-semibold text-slate-800 flex items-center gap-2">1. 筛选展区</div>
+          <el-radio-group v-model="configHallForm.areaFilter" class="flex flex-wrap gap-x-4 gap-y-2">
+            <el-radio-button label="">全部</el-radio-button>
+            <el-radio-button v-for="item in areas" :key="item" :label="item">{{ item }}</el-radio-button>
+          </el-radio-group>
         </div>
+        <div v-show="configHallForm.areaFilter">
+          <div class="mb-3 text-[13px] font-semibold text-slate-800 flex items-center gap-2">2. 筛选楼层 (可选)</div>
+          <el-radio-group v-model="configHallForm.floorFilter" class="flex flex-wrap gap-x-4 gap-y-2">
+            <el-radio-button label="">全层</el-radio-button>
+            <el-radio-button v-for="item in configFormFloorOptions" :key="item" :label="item">{{ item }}</el-radio-button>
+          </el-radio-group>
+        </div>
+        <el-divider class="!my-2" />
         <div>
-          <div class="mb-3 text-[13px] font-semibold text-slate-800 flex items-center gap-2">楼层覆盖</div>
-          <div class="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-            <el-checkbox-group v-model="configHallForm.floors" class="flex flex-wrap gap-x-4 gap-y-2">
-              <el-checkbox v-for="item in configFormFloorOptions" :key="item.value" :label="item.value">{{ item.label }}</el-checkbox>
-              <span v-if="configFormFloorOptions.length === 0" class="text-xs text-slate-400">请先选择展区</span>
-            </el-checkbox-group>
+          <div class="mb-3 text-[13px] font-semibold text-slate-800 flex items-center justify-between">
+            <span>3. 勾选需要指派的具体展厅</span>
+            <el-button type="primary" link @click="selectAllHalls" class="!font-medium" style="padding: 0; min-height: auto;">全选</el-button>
           </div>
-        </div>
-        <div>
-          <div class="mb-3 text-[13px] font-semibold text-slate-800 flex items-center gap-2">展厅具体指派</div>
-          <div class="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-            <el-checkbox-group v-model="configHallForm.halls" class="flex flex-wrap gap-x-4 gap-y-2">
-              <el-checkbox v-for="item in configFormHallOptions" :key="item.value" :label="item.value">{{ item.label }}</el-checkbox>
-              <span v-if="configFormHallOptions.length === 0" class="text-xs text-slate-400">请先选择楼层</span>
+          <div class="rounded-xl border border-slate-200 bg-white p-4 max-h-[220px] overflow-auto">
+            <el-checkbox-group v-model="configHallForm.halls" class="grid grid-cols-2 gap-2">
+              <el-checkbox v-for="item in configFormHallOptions" :key="item.value" :label="item.value" class="!w-full">
+                {{ item.hallName }}
+              </el-checkbox>
             </el-checkbox-group>
+            <div v-if="configFormHallOptions.length === 0" class="text-sm text-center text-slate-400 py-4">
+              请先在上方进行区层过滤筛选
+            </div>
           </div>
         </div>
       </div>
       <template #footer>
         <el-button @click="configHallDialogVisible = false">取消</el-button>
-        <el-button type="primary" color="#b42318" @click="submitConfigHall">执行覆盖</el-button>
+        <el-button type="primary" color="#b42318" @click="submitConfigHall">确定指派展厅</el-button>
       </template>
     </el-dialog>
 
+    <el-dialog v-model="unassignedHallsVisible" title="展厅点位人员配置分布" width="540px">
+      <div class="text-xs text-slate-500 mb-3">展示所有展厅点位的当前主责责任人数。（按无配置人员优先排序）</div>
+      <div class="max-h-[400px] overflow-auto border rounded bg-slate-50 p-2">
+        <ul class="space-y-1">
+          <li v-for="hall in unassignedHallsList" :key="hall.name" class="text-sm px-3 py-2 bg-white rounded border border-slate-200 text-slate-700 font-medium flex justify-between items-center group hover:bg-slate-100 transition-colors">
+            <span>{{ hall.name.replace(/\|/g, ' / ') }}</span>
+            <span class="text-xs ml-2 px-2 py-0.5 rounded" :class="hall.count > 0 ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600 font-bold'">已配 {{ hall.count }} 人</span>
+          </li>
+        </ul>
+      </div>
+    </el-dialog>
+
+    <el-dialog v-model="unassignedMerchantsVisible" title="商家人员配置分布" width="540px">
+      <div class="text-xs text-slate-500 mb-3">展示所有商家的当前主责责任人数。（按无配置人员优先排序）</div>
+      <div class="max-h-[400px] overflow-auto border rounded bg-slate-50 p-2">
+        <ul class="space-y-1">
+          <li v-for="merchant in unassignedMerchantsList" :key="merchant.id" class="text-sm px-3 py-2 bg-white rounded border border-slate-200 text-slate-700 font-medium flex justify-between items-center group hover:bg-slate-100 transition-colors">
+            <div>
+              <span>{{ merchant.name }}</span>
+              <span class="text-xs text-slate-400 ml-2">({{ merchant.area }})</span>
+            </div>
+            <span class="text-xs ml-2 px-2 py-0.5 rounded" :class="merchant.count > 0 ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600 font-bold'">已配 {{ merchant.count }} 人</span>
+          </li>
+        </ul>
+      </div>
+    </el-dialog>
+
     <el-dialog v-model="configMerchantDialogVisible" title="批量配置责任商家" width="560px">
+      <div class="mb-4 text-xs text-slate-500 bg-blue-50/50 p-3 rounded-lg border border-blue-100 leading-relaxed">
+        此操作将全量覆盖选中人员的责任商家，<span class="font-bold text-red-600">原有配置将被清空并替换</span>，请谨慎操作。商家列表包含此前由运营配置的全局商户。
+      </div>
       <el-form label-position="top">
-        <el-form-item label="责任商家池选择（多选）">
+        <el-form-item>
+          <template #label>
+            <div class="flex items-center justify-between w-full">
+              <span>责任商家池选择（联想推荐多选）</span>
+              <el-button type="primary" link @click="unassignedMerchantsVisible = true" class="shrink-0 flex items-center !h-auto !p-0">
+                <span class="font-medium underline underline-offset-2 decoration-blue-300 hover:decoration-blue-500">查询商家人员配置</span>
+              </el-button>
+            </div>
+          </template>
           <!-- 追加独立已选区域 -->
           <div v-if="configSelectedMerchantsDocs.length > 0" class="mb-3 w-full rounded-lg bg-orange-50/50 p-3 ring-1 ring-inset ring-orange-600/10">
             <div class="mb-2 text-xs font-semibold text-orange-800">已选商家 ({{ configSelectedMerchantsDocs.length }})</div>

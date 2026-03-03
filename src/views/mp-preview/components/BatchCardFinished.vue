@@ -9,18 +9,13 @@ const props = defineProps<{
     <div class="flex items-center">
       <span class="w-1.5 h-4 bg-gray-200 rounded-sm mr-2"></span>
       <h2 class="text-[14px] font-medium text-gray-500">{{ batch.batchName }}</h2>
-      <span class="ml-2 text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">已结束</span>
+      <span class="ml-2 text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">已完成</span>
     </div>
 
     <div class="flex items-center">
-      <div class="flex flex-col text-right mr-3">
-        <span class="text-[10px] text-gray-400">最终完成</span>
-        <span class="text-[14px] font-bold text-[#333333]">{{ batch.finishedCount }}<span class="text-[9px] text-gray-400 font-normal ml-0.5">单</span></span>
-      </div>
-      <div class="h-6 w-px bg-gray-200 mx-2"></div>
-      <div class="flex flex-col text-right w-12 text-[#FF6600]">
-        <span class="text-[10px] text-gray-400">完成率</span>
-        <span class="text-[14px] font-bold">{{ batch.completionRate }}</span>
+      <div class="text-[14px] font-bold text-[#333333]">
+        <span class="text-[12px] font-normal text-gray-400 mr-1.5">已完成</span>
+        {{ batch.finishedCount }}<span class="text-[11px] text-gray-400 font-normal ml-[2px]">单</span>
       </div>
     </div>
   </div>

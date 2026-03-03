@@ -17,6 +17,7 @@ const seedNames = ['李海', '王青', '陈涛', '赵斌', '刘鹏', '周凯', '
 const pageTitle = computed(() => {
   if (warningType === 'KITCHEN_DELAY') return '出单超时'
   if (warningType === 'NO_RIDER_ACCEPT') return '待接单超时'
+  if (warningType === 'GO_HUB_TIMEOUT') return '送集散地超时'
   if (warningType === 'HUB_STAY') return '在集散地滞留超时'
   if (warningType === 'DELIVERY_TIMEOUT') return '送展位超时'
   return '履约异常堵点'
@@ -156,14 +157,15 @@ onMounted(() => {
            </div>
          </template>
 
-         <!-- P4: 送展位超时 -->
+         <!-- P4: 送集散地/送展位超时 (按配送员粒度) -->
          <template v-else>
            <div v-for="(item, idx) in listData" :key="idx" class="bg-white p-4 rounded-xl shadow-sm border border-rose-50 relative space-y-3">
               <!-- 头部人物及定位信息 -->
               <div class="flex justify-between items-center">
                  <div class="flex items-center gap-2">
                     <span class="font-bold text-gray-800 text-[15px]">{{ item.courierName }}</span>
-                    <span class="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded font-medium">往 {{ item.hallName }}</span>
+                    <span v-if="warningType === 'DELIVERY_TIMEOUT'" class="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded font-medium">往 {{ item.hallName }}</span>
+                    <span v-else class="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded font-medium">赴集散延误</span>
                  </div>
                  <div class="flex items-center text-right">
                     <a :href="`tel:${item.courierPhone}`" class="flex items-center bg-rose-50 hover:bg-rose-100 rounded-full px-2.5 py-1.5 transition-colors border border-rose-100 text-rose-600">

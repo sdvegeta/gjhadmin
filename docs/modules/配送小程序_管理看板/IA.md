@@ -35,6 +35,7 @@ flowchart TD
     B1 --> C3["下半屏页脚：全天辅助汇总流"]
     
     D1 -->|点击报警数字| E1["/admin/mp-preview/warning-detail (堵点下钻明细)"]
+    C3 -->|点击空闲人员入口| E2["/admin/mp-preview/idle-staff (空闲人员列表)"]
 ```
 
 ## 3. 信息对象层（Information Objects）
@@ -56,7 +57,7 @@ flowchart TD
 flowchart TD
     A["管理员点击进入'看板'Tab"] --> B{"检查本地缓存 last_view_zone"}
     B -->|存在| C["将缓存值设为当前高亮筛选态"]
-    B -->|为空| D["将配置列表[第1项/全部]设为高亮状态"]
+    B -->|为空| D["默认选中第1项(A区)"]
     C --> E["携区参并发请求: 波次/漏斗/堵点/时效 多维大盘"]
     D --> E
     E --> F{"请求成功?"}
@@ -90,3 +91,4 @@ flowchart TD
   - `components/BatchCardWaiting.vue` (未开始批次卡片：极简)
   - `components/BatchCardFinished.vue` (已结束批次卡片：极其扁平的锚点)
 - `src/views/mp-preview/WarningDetail.vue` (下钻列表页面)
+- `src/views/mp-preview/IdleStaffList.vue` (空闲人员列表页)

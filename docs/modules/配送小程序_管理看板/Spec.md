@@ -23,7 +23,6 @@
 **响应出参 (Mock)：**
 ```json
 [
-  { "id": "ALL", "name": "全部" },
   { "id": "ZONE_A", "name": "A区" },
   { "id": "ZONE_B", "name": "B区" },
   { "id": "ZONE_C", "name": "C区" },
@@ -59,7 +58,7 @@
       "finishedCount": 540,
       "completionRate": "63.5%",
       "funnel": { 
-         "waitAccept": { "count": 145, "bagCount": 60 }, 
+         "waitAccept": { "count": 145, "bagCount": 60, "people": 0 }, 
          "goHub": { "count": 285, "bagCount": 110, "people": 15 }, 
          "inHub": { "count": 135, "bagCount": 42, "people": 5 }, 
          "goBooth": { "count": 445, "bagCount": 210, "people": 32 }, 
@@ -68,6 +67,7 @@
       "efficiency": { "avgWaitAccept": 6.5, "avgGoHub": 8.2, "avgInHub": 14.5, "avgGoBooth": 12.0 },
       "warnings": [
         { "type": "NO_RIDER_ACCEPT", "count": 25, "maxDelayMins": 18, "desc": "配送员超时未接单" },
+        { "type": "GO_HUB_TIMEOUT", "count": 8, "maxDelayMins": 15, "desc": "送集散地超时" },
         { "type": "HUB_STAY", "count": 12, "maxDelayMins": 30, "desc": "集散分拣滞留" }
       ]
     },
@@ -86,7 +86,7 @@
       "placedOrderCount": 650,
       "printedOrderCount": 600,
       "funnel": { 
-         "waitAccept": { "count": 45, "bagCount": 20 }, 
+         "waitAccept": { "count": 45, "bagCount": 20, "people": 0 }, 
          "goHub": { "count": 68, "bagCount": 25, "people": 8 }, 
          "inHub": { "count": 42, "bagCount": 15, "people": 4 }, 
          "goBooth": { "count": 95, "bagCount": 35, "people": 12 }, 
@@ -94,6 +94,7 @@
       },
       "warnings": [
         { "type": "KITCHEN_DELAY", "count": 50, "maxDelayMins": 35, "desc": "后厨出餐超纲 / 压单" },
+        { "type": "GO_HUB_TIMEOUT", "count": 6, "maxDelayMins": 12, "desc": "送集散地超时" },
         { "type": "DELIVERY_TIMEOUT", "count": 5, "maxDelayMins": 40, "desc": "送展位在途迷失" }
       ]
     }

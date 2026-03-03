@@ -39,6 +39,12 @@ const routes = [
     name: 'mp-warning-detail-preview',
     component: () => import('@/views/mp-preview/WarningDetail.vue'),
     meta: { title: '堵点下钻明细' }
+  },
+  {
+    path: '/mp-preview/idle-staff',
+    name: 'mp-idle-staff',
+    component: () => import('@/views/mp-preview/IdleStaffList.vue'),
+    meta: { title: '空闲运力明细' }
   }
 ]
 

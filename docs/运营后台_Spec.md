@@ -10,10 +10,12 @@
 flowchart LR
     A["Admin Shell"] --> B["配送管理模块"]
     A --> C["配送统计模块"]
-    B --> D["配置接口组"]
-    C --> E["统计接口组"]
-    D --> F["审计日志接口"]
-    C --> F
+    A --> D["移动端预览模块"]
+    B --> E["配置接口组"]
+    C --> F["统计接口组"]
+    D --> G["MOCK流速引擎与瀑布流"]
+    E --> H["审计日志接口"]
+    C --> H
 ```
 
 ## 2. 前端工程结构
@@ -25,6 +27,7 @@ admin/
     modules/
       delivery-management/
       delivery-stats/
+      mp-preview/
     components/
     router/
   docs/
@@ -34,12 +37,14 @@ admin/
     modules/
       配送管理/
       配送统计/
+      配送小程序_管理看板/
 ```
 
 ## 3. 路由规范
 
-1. `/admin/delivery-management`
-2. `/admin/delivery-stats`
+1. `/admin/delivery-management` (B端 PC操作)
+2. `/admin/delivery-stats` (B端 PC图表)
+3. `/admin/mp-preview/*` (移动端模拟预览容器，含 dashboard、warning、idle)
 
 ## 4. 跨模块公共能力
 

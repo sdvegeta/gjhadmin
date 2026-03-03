@@ -13,33 +13,29 @@
       </div>
 
       <!-- 顶部 Header -->
-      <div class="bg-white shrink-0 z-10 relative">
-        <div class="h-12 flex items-center justify-center relative">
-           <span class="font-medium text-[17px] text-[#333333]">悠饭配送</span>
-           <!-- 模拟右上圆角胶囊组件 -->
-           <div class="absolute right-4 w-[80px] h-[30px] rounded-full border border-gray-200 flex items-center justify-evenly bg-white/50">
-             <div class="flex gap-0.5"><div class="w-1 h-1 bg-black rounded-full"></div><div class="w-1.5 h-1.5 bg-black rounded-full"></div><div class="w-1 h-1 bg-black rounded-full"></div></div>
-             <div class="w-[1px] h-3.5 bg-gray-200"></div>
-             <div class="w-4 h-4 rounded-full border-[1.5px] border-black flex items-center justify-center"><div class="w-1.5 h-1.5 bg-black rounded-full"></div></div>
-           </div>
-           <!-- 关闭按钮模拟 -->
-           <button @click="$router.push('/delivery-management/responsibility')" class="absolute left-4 p-2 text-gray-400 hover:text-gray-600">
-             <span class="text-xl">◁</span>
+      <div class="bg-white shrink-0 z-10 relative shadow-sm">
+        <div class="h-12 flex items-center justify-between px-4 relative">
+           <button @click="$router.push('/delivery-management/responsibility')" class="p-2 -ml-2 text-gray-400 hover:text-gray-600">
+             <span class="text-xl leading-none">◁</span>
+           </button>
+           <span class="font-medium text-[17px] text-[#333333]">配送看板</span>
+           <button @click="openReleaseScanner" class="bg-orange-50 text-orange-600 px-3 py-1 rounded text-sm font-semibold ring-1 ring-inset ring-orange-500/20 active:bg-orange-100 transition-colors">
+             释放
            </button>
         </div>
         
-        <!-- 区域 Tab (悠饭橙底横条风格) -->
+        <!-- 区域 Tab (横向排布、默认选中) -->
         <div class="flex overflow-x-auto hide-scrollbar px-2 h-11 border-b border-gray-100">
-          <button 
-            v-for="zone in zones" 
-            :key="zone.id"
-            @click="selectZone(zone.id)"
-            class="px-4 h-full relative text-[15px] whitespace-nowrap transition-colors flex flex-col justify-center items-center"
-            :class="activeZone === zone.id ? 'text-[#333333] font-bold' : 'text-gray-400 font-normal'"
-          >
-            {{ zone.name }}
-            <div v-if="activeZone === zone.id" class="absolute bottom-0 w-5 h-0.5 bg-[#FF6600] rounded-full"></div>
-          </button>
+           <button 
+             v-for="zone in zones" 
+             :key="zone.id"
+             @click="selectZone(zone.id)"
+             class="px-4 h-full relative text-[15px] whitespace-nowrap transition-colors flex flex-col justify-center items-center flex-1"
+             :class="activeZone === zone.id ? 'text-[#333333] font-bold' : 'text-gray-400 font-normal'"
+           >
+             {{ zone.name }}
+             <div v-if="activeZone === zone.id" class="absolute bottom-0 w-8 h-0.5 bg-[#FF6600] rounded-full"></div>
+           </button>
         </div>
       </div>
 
@@ -91,9 +87,11 @@
             </div>
           </div>
           <!-- 核心：空闲待命兵力萃取 -->
-          <div class="flex items-center justify-between pt-2 border-t border-dashed border-gray-100">
+          <div class="flex items-center justify-between pt-2 border-t border-dashed border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors -mx-4 px-4 pb-1 mt-1"
+               @click="$router.push('/mp-preview/idle-staff')">
             <div class="flex items-center">
                <span class="text-[#333333] text-[13px] font-bold shrink-0">当前空闲</span>
+               <svg class="w-3.5 h-3.5 ml-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
             </div>
             <div class="flex items-center gap-4">
               <div class="flex items-baseline">
@@ -123,6 +121,76 @@
           <span class="text-[10px]">我的</span>
         </div>
       </div>
+      
+      <!-- 侧边释放操作台 Draw Simulation -->
+      <div v-if="isScanningDrawerVisible" class="absolute inset-0 z-50 bg-black flex flex-col animate-in slide-in-from-right duration-300">
+        <!-- Drawer Header -->
+        <div class="h-12 bg-gray-900/90 flex items-center justify-between px-4 sticky top-0 shrink-0 border-b border-gray-800">
+          <button @click="closeReleaseScanner" class="text-white bg-white/10 px-3 py-1 rounded text-sm hover:bg-white/20">取消</button>
+          <span class="text-white text-base font-semibold">实物核销释放</span>
+        </div>
+        
+        <!-- MOCK 相机扫描区域 UI -->
+        <div class="h-[260px] relative bg-[#111] shrink-0 border-b-[4px] border-[#FF6600]/80 overflow-hidden group">
+          <div class="absolute inset-0 flex flex-col items-center justify-center z-10 opacity-70">
+             <div class="w-[180px] h-[180px] border-2 border-[#FF6600]/50 rounded-[20px] relative">
+               <div class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#FF6600] rounded-tl-[16px]"></div>
+               <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#FF6600] rounded-tr-[16px]"></div>
+               <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#FF6600] rounded-bl-[16px]"></div>
+               <div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#FF6600] rounded-br-[16px]"></div>
+               <div class="absolute left-0 right-0 top-1/2 h-[1px] bg-[#FF6600] shadow-[0_0_8px_#FF6600] animate-[scan_2s_ease-in-out_infinite]"></div>
+             </div>
+          </div>
+          <div class="absolute bottom-4 left-0 right-0 text-center z-20">
+            <span class="bg-black/80 text-white/90 text-xs px-4 py-1.5 rounded-full font-medium tracking-wide">请扫描实物袋签二维码，支持连扫</span>
+          </div>
+          
+          <!-- Mock Scan Trigger (只用于网页端模拟扫码事件) -->
+          <div class="absolute top-4 right-4 bg-white/20 p-2 rounded z-30 cursor-pointer hidden group-hover:block" @click="mockScanAction">
+             <span class="text-white text-[10px]">点击模拟扫码命中</span>
+          </div>
+        </div>
+        
+        <!-- 扫码锁定上下文与操作流水区 -->
+        <div class="flex-1 bg-gray-50 flex flex-col relative">
+          <!-- 当前锁定人头部 -->
+          <div v-if="scannedContext" class="bg-white p-4 shrink-0 shadow-sm border-b border-gray-200 flex justify-between items-center z-10">
+             <div class="flex flex-col">
+               <span class="text-xs text-gray-500 mb-1">已锁定当值接单人</span>
+               <div class="flex items-center gap-2">
+                 <span class="text-base font-bold text-gray-900">{{ scannedContext.courierName }}</span>
+                 <span class="bg-blue-50 text-blue-600 text-[10px] px-2 py-0.5 rounded font-medium">在途总计 {{ scannedContext.totalInTransit }}袋</span>
+               </div>
+             </div>
+             <!-- 特权一键清空抛单 -->
+             <button @click="bulkReleaseAll" class="bg-[#b42318] hover:bg-red-800 text-white px-3 py-2 rounded text-xs font-bold shadow-md active:scale-95 transition-all">
+               一键释放Ta全部
+             </button>
+          </div>
+          
+          <!-- 初始化空白提示 -->
+          <div v-if="!scannedContext" class="flex-1 flex flex-col items-center justify-center pb-20">
+            <svg class="w-12 h-12 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            <span class="text-gray-400 text-xs">等待扫码追踪...</span>
+          </div>
+          
+          <!-- 扫码流水明细队列 (最新在上面) -->
+          <div v-else class="flex-1 overflow-y-auto px-4 py-3 space-y-3 pb-safe styled-scroll">
+            <div v-for="log in scanLogs" :key="log.id" 
+                 class="bg-white rounded-lg p-3 ring-1 ring-inset shadow-sm flex flex-col gap-1 transition-all"
+                 :class="log.isBulk ? 'ring-red-500/30 border-l-4 border-l-red-500' : 'ring-green-500/30 border-l-4 border-l-green-500'">
+              <div class="flex justify-between items-center">
+                <span class="text-xs font-bold" :class="log.isBulk ? 'text-red-700' : 'text-green-700'">{{ log.title }}</span>
+                <span class="text-[10px] text-gray-400">{{ log.time }}</span>
+              </div>
+              <div class="text-[11px] text-gray-600 leading-tight">
+                {{ log.desc }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
     
     <!-- 追加产品/技术规格文档查看悬浮按钮 -->
@@ -138,6 +206,7 @@ import prdRaw from '../../../docs/modules/配送小程序_管理看板/PRD.md?ra
 import specRaw from '../../../docs/modules/配送小程序_管理看板/Spec.md?raw'
 import iaRaw from '../../../docs/modules/配送小程序_管理看板/IA.md?raw'
 
+import { ElMessage, ElMessageBox } from 'element-plus'
 import BatchCardRunning from './components/BatchCardRunning.vue'
 import BatchCardWaiting from './components/BatchCardWaiting.vue'
 import BatchCardFinished from './components/BatchCardFinished.vue'
@@ -149,14 +218,13 @@ const docs = { prd: prdRaw, spec: specRaw, ia: iaRaw }
 const CACHE_KEY = 'mp_last_view_zone_id'
 
 const zones = [
-  { id: 'ALL', name: '全展馆' },
-  { id: 'ZONE_A', name: 'A区' },
-  { id: 'ZONE_B', name: 'B区' },
-  { id: 'ZONE_C', name: 'C区' },
-  { id: 'ZONE_D', name: 'D区' }
+  { id: 'A区', name: 'A区' },
+  { id: 'B区', name: 'B区' },
+  { id: 'C区', name: 'C区' },
+  { id: 'D区', name: 'D区' }
 ]
 
-const activeZone = ref('ALL')
+const activeZone = ref('A区')
 const isLoading = ref(true)
 
 interface BatchItem {
@@ -262,18 +330,10 @@ const generateMockData = (zoneId: string) => {
       busySigners
     },
     batches: [
-      // Batch C: 未开始批次
+      // Batch A: 致命烂尾批次（过去的时段2，已过清货时间且有未送达）
       {
-        batchId: 'b_1015',
-        batchName: '10:15~11:00',
-        status: 'WAITING',
-        isMidnightBatch: false,
-        totalCount: Math.floor(1050 * baseMulti)
-      },
-        // Batch A: 致命烂尾批次（兼做：5位数极限抗压测试）
-      {
-        batchId: 'b_0915',
-        batchName: '09:15~10:00',
+        batchId: 'b_0945',
+        batchName: '09:45~10:30',
         status: 'FINISHED',
         isMidnightBatch: false,
         totalCount: Math.floor(15420 * baseMulti),
@@ -281,7 +341,7 @@ const generateMockData = (zoneId: string) => {
         completionRate: '72.6%',
         remainCount: Math.floor(4200 * baseMulti), // <- 这是它触发烂尾被排到第一位的关键
         funnel: {
-           waitAccept: { count: Math.floor(1250 * baseMulti), bagCount: Math.floor(480 * baseMulti) },
+           waitAccept: { count: Math.floor(1250 * baseMulti), bagCount: Math.floor(480 * baseMulti), people: 0 },
            goHub: { count: Math.floor(820 * baseMulti), bagCount: Math.floor(350 * baseMulti), people: Math.floor(105 * baseMulti) },
            inHub: { count: Math.floor(630 * baseMulti), bagCount: Math.floor(210 * baseMulti), people: Math.floor(42 * baseMulti) },
            goBooth: { count: Math.floor(1500 * baseMulti), bagCount: Math.floor(580 * baseMulti), people: Math.floor(218 * baseMulti) },
@@ -296,7 +356,8 @@ const generateMockData = (zoneId: string) => {
            estimateMins: 45
         },
         warnings: [
-          { type: 'DELIVERY_TIMEOUT', count: Math.floor(10 * baseMulti), maxDelayMins: 45, desc: '送展位超时' }
+          { type: 'DELIVERY_TIMEOUT', count: Math.floor(10 * baseMulti), maxDelayMins: 45, desc: '送展位超时' },
+          { type: 'GO_HUB_TIMEOUT', count: Math.floor(8 * baseMulti), maxDelayMins: 15, desc: '送集散地超时' }
         ]
       },
       // Batch E: 宵夜连轴段
@@ -308,7 +369,7 @@ const generateMockData = (zoneId: string) => {
         placedOrderCount: Math.floor(650 * baseMulti),
         printedOrderCount: Math.floor(600 * baseMulti),
         funnel: {
-           waitAccept: { count: Math.floor(15 * baseMulti), bagCount: Math.floor(6 * baseMulti) },
+           waitAccept: { count: Math.floor(15 * baseMulti), bagCount: Math.floor(6 * baseMulti), people: 0 },
            goHub: { count: Math.floor(18 * baseMulti), bagCount: Math.floor(8 * baseMulti), people: Math.floor(8 * baseMulti) },
            inHub: { count: Math.floor(12 * baseMulti), bagCount: Math.floor(5 * baseMulti), people: Math.floor(4 * baseMulti) },
            goBooth: { count: Math.floor(25 * baseMulti), bagCount: Math.floor(10 * baseMulti), people: Math.floor(12 * baseMulti) },
@@ -327,10 +388,10 @@ const generateMockData = (zoneId: string) => {
           { type: 'NO_RIDER_ACCEPT', count: Math.floor(15 * baseMulti), maxDelayMins: 16, desc: '待接单超时' }
         ]
       },
-      // Batch B: 正常的交战进行中
+      // Batch B: 正常的交战进行中 (当前的时段3)
       {
-        batchId: 'b_0945',
-        batchName: '09:45~10:30',
+        batchId: 'b_1015',
+        batchName: '10:15~11:00',
         status: 'RUNNING',
         isMidnightBatch: false,
         totalCount: Math.floor(850 * baseMulti),
@@ -338,7 +399,7 @@ const generateMockData = (zoneId: string) => {
         completionRate: '63.5%',
         remainCount: Math.floor(310 * baseMulti),
         funnel: {
-           waitAccept: { count: Math.floor((10 + rand() * 40) * baseMulti), bagCount: Math.floor((5 + rand() * 15) * baseMulti) },
+           waitAccept: { count: Math.floor((10 + rand() * 40) * baseMulti), bagCount: Math.floor((5 + rand() * 15) * baseMulti), people: 0 },
            goHub: { count: Math.floor((80 + rand() * 50) * baseMulti), bagCount: Math.floor((30 + rand() * 25) * baseMulti), people: Math.floor(20 * baseMulti) },
            inHub: { count: Math.floor((30 + rand() * 20) * baseMulti), bagCount: Math.floor((12 + rand() * 10) * baseMulti), people: Math.floor(6 * baseMulti) },
            goBooth: { count: Math.floor((120 + rand() * 80) * baseMulti), bagCount: Math.floor((45 + rand() * 30) * baseMulti), people: Math.floor(35 * baseMulti) },
@@ -357,13 +418,24 @@ const generateMockData = (zoneId: string) => {
           ...(rand() > 0.5 ? [{ type: 'HUB_STAY', count: Math.floor((2 + rand()*5)*baseMulti), maxDelayMins: Math.floor(15 + rand()*10), desc: '在集散地滞留超时' }] : [])
         ]
       },
-      // Batch D: 尚未截单的极远期批次
+      // Batch D: 尚未截单的极远期批次 (未来的时段4)
       {
         batchId: 'b_1045',
         batchName: '10:45~11:30',
         status: 'WAITING',
         isMidnightBatch: false,
         totalCount: Math.floor(1200 * baseMulti)
+      },
+      // Batch F: 完美结案批次 (过去的时段1，已送完)
+      {
+        batchId: 'b_0915',
+        batchName: '09:15~10:00',
+        status: 'FINISHED',
+        isMidnightBatch: false,
+        totalCount: Math.floor(650 * baseMulti),
+        finishedCount: Math.floor(650 * baseMulti),
+        completionRate: '100%',
+        remainCount: 0
       }
     ]
   } as DashboardData
@@ -375,6 +447,71 @@ const selectZone = (id: string) => {
   activeZone.value = id
   localStorage.setItem(CACHE_KEY, id)
   fetchData(id)
+}
+
+// ===== 释放操作台交互逻辑 =====
+const isScanningDrawerVisible = ref(false)
+const scannedContext = ref<any>(null)
+const scanLogs = ref<any[]>([])
+let mockScanIndex = 0
+
+const openReleaseScanner = () => {
+  isScanningDrawerVisible.value = true
+  scannedContext.value = null
+  scanLogs.value = []
+  mockScanIndex = 0
+}
+
+const closeReleaseScanner = () => {
+  isScanningDrawerVisible.value = false
+}
+
+const mockScanAction = () => {
+  const code = 3049 + mockScanIndex
+  mockScanIndex++
+  
+  if (!scannedContext.value) {
+     scannedContext.value = {
+       courierName: '张三 (配送员)',
+       totalInTransit: 12
+     }
+  } else {
+     scannedContext.value.totalInTransit = Math.max(0, scannedContext.value.totalInTransit - 1)
+  }
+  
+  const now = new Date()
+  scanLogs.value.unshift({
+    id: Date.now() + Math.random(),
+    title: '释放成功',
+    time: `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`,
+    desc: `袋签尾号(${code}) 连带同单元释放。状态已从 [赴集散] 隐式回滚为 [待接单]`,
+    isBulk: false
+  })
+}
+
+const bulkReleaseAll = () => {
+  ElMessageBox.confirm(
+    '此操作将一键释放该配送员当前所有在途未完成订单至公共调度池中，是否确认执行？',
+    '一键清空防呆提示',
+    {
+      confirmButtonText: '强制释放全部',
+      cancelButtonText: '取消',
+      type: 'error',
+      customClass: 'mobile-dialog-scale' // Optionally add a class to scale down for iframe
+    }
+  )
+    .then(() => {
+      const now = new Date()
+      scanLogs.value.unshift({
+        id: Date.now() + Math.random(),
+        title: '批量释放执行',
+        time: `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`,
+        desc: `强制指令：连带释放张三名下余留 ${scannedContext.value.totalInTransit} 袋配送单元。`,
+        isBulk: true
+      })
+      scannedContext.value.totalInTransit = 0
+    })
+    .catch(() => {})
 }
 
 const fetchData = (id: string) => {
@@ -423,5 +560,17 @@ onMounted(() => {
 .styled-scroll::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
+}
+</style>
+<style>
+@keyframes scan {
+  0% { transform: translateY(-70px); }
+  50% { transform: translateY(70px); }
+  100% { transform: translateY(-70px); }
+}
+
+.mobile-dialog-scale {
+  transform: scale(0.9);
+  max-width: 320px !important;
 }
 </style>

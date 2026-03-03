@@ -62,32 +62,34 @@ const isRotten = computed(() => props.batch.status === 'FINISHED' && (props.batc
          </div>
        </template>
        
-       <!-- 宵夜批次：展示实时下单池与打签出单 -->
+       <!-- 宵夜批次：展示实时下单池与打签出单/已送达 -->
        <template v-else>
          <div class="flex flex-col">
-           <div class="text-[13px] text-purple-500 mb-1.5">当前已下单总量</div>
+           <div class="text-[13px] text-purple-500 mb-1.5 font-medium">当前下单总量</div>
            <div class="flex items-baseline gap-1">
              <div class="text-[32px] font-bold text-[#333333] leading-none tracking-tight">{{ batch.placedOrderCount }}</div>
              <div class="text-[13px] font-medium text-gray-400">单</div>
            </div>
          </div>
-         <div class="flex flex-col text-right">
-           <div class="text-[12px] text-gray-500 mb-1.5">已打签出单</div>
-           <div class="flex items-baseline justify-end gap-1">
-             <div class="text-[20px] font-bold text-[#FF6600] leading-none">{{ batch.printedOrderCount }}</div>
-             <div class="text-[13px] font-medium text-gray-400">单</div>
+         <div class="flex flex-col items-end flex-grow text-right min-w-0">
+           <div class="flex items-center justify-end gap-1.5 mb-1.5">
+             <span class="text-[12px] text-gray-500">已出单 / 已送达</span>
+           </div>
+           <div class="flex items-baseline justify-end gap-1.5 mb-1.5">
+             <div class="text-[18px] font-bold text-[#FF6600] leading-none">{{ batch.printedOrderCount }}</div>
+             <span class="text-gray-300 text-[14px]">/</span>
+             <div class="text-[16px] font-bold text-[#333333] leading-none">{{ batch.funnel?.delivered || 0 }}</div>
            </div>
          </div>
        </template>
     </div>
 
-    <!-- 独立一行的清货流速与倒计时 (去除色彩噪点，回归灰阶专业度) -->
-    <div v-if="batch.efficiency && batch.efficiency.clearRate && !isMidnight" class="mb-3 px-2 py-1 flex items-center justify-between border-b border-gray-100/50">
+    <div v-if="batch.efficiency && batch.efficiency.clearRate !== undefined && !isMidnight" class="mb-3 px-2 py-1 flex items-center justify-between border-b border-gray-100/50">
       <div class="flex items-center text-gray-500">
-        <span class="text-[11px] font-medium whitespace-nowrap">送达流速: <span class="text-[13px] font-bold text-gray-700 mx-0.5">{{ batch.efficiency.clearRate }}</span> <span class="text-[10px]">单/分</span></span>
+        <span class="text-[11px] font-medium whitespace-nowrap">送达流速: <span class="text-[13px] font-bold text-gray-700 mx-0.5">{{ batch.efficiency.clearRate === 0 ? '未知' : batch.efficiency.clearRate }}</span> <span v-if="batch.efficiency.clearRate !== 0" class="text-[10px]">单/分</span></span>
       </div>
       <div class="flex items-center text-gray-500">
-        <span class="text-[11px] font-medium whitespace-nowrap">预计还需: <span class="text-[13px] font-bold text-gray-700 mx-0.5">{{ batch.efficiency.estimateMins }}</span> <span class="text-[10px]">分钟</span></span>
+        <span class="text-[11px] font-medium whitespace-nowrap">预计还需: <span class="text-[13px] font-bold text-gray-700 mx-0.5">{{ batch.efficiency.clearRate === 0 ? '未知' : Math.max(1, batch.efficiency.estimateMins) }}</span> <span v-if="batch.efficiency.clearRate !== 0" class="text-[10px]">分钟</span></span>
       </div>
     </div>
 
