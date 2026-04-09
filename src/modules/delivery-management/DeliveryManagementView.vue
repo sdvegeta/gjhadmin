@@ -1,11 +1,24 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowRight, Refresh, Search, Warning } from '@element-plus/icons-vue'
 import DocViewer from '@/components/DocViewer.vue'
 
 import prdRaw from '../../../docs/modules/配送管理/PRD.md?raw'
 import specRaw from '../../../docs/modules/配送管理/Spec.md?raw'
 import iaRaw from '../../../docs/modules/配送管理/IA.md?raw'
+import orderMonitorPrdRaw from '../../../docs/modules/配送管理/订单实时监控/PRD.md?raw'
+import orderMonitorSpecRaw from '../../../docs/modules/配送管理/订单实时监控/Spec.md?raw'
+import orderMonitorIaRaw from '../../../docs/modules/配送管理/订单实时监控/IA.md?raw'
+import staffScopePrdRaw from '../../../docs/modules/配送管理/配送员主责配置/PRD.md?raw'
+import staffScopeSpecRaw from '../../../docs/modules/配送管理/配送员主责配置/Spec.md?raw'
+import staffScopeIaRaw from '../../../docs/modules/配送管理/配送员主责配置/IA.md?raw'
+import pointMerchantPrdRaw from '../../../docs/modules/配送管理/点位商家配置/PRD.md?raw'
+import pointMerchantSpecRaw from '../../../docs/modules/配送管理/点位商家配置/Spec.md?raw'
+import pointMerchantIaRaw from '../../../docs/modules/配送管理/点位商家配置/IA.md?raw'
+import staffPrdRaw from '../../../docs/modules/配送管理/配送员名册/PRD.md?raw'
+import staffSpecRaw from '../../../docs/modules/配送管理/配送员名册/Spec.md?raw'
+import staffIaRaw from '../../../docs/modules/配送管理/配送员名册/IA.md?raw'
 
 import {
   areas,
@@ -16,7 +29,25 @@ import {
   allHalls
 } from '@/mock/deliveryData'
 
-const docs = { prd: prdRaw, spec: specRaw, ia: iaRaw }
+const moduleDocs = { prd: prdRaw, spec: specRaw, ia: iaRaw }
+const tabDocsMap = {
+  preCutoffOrderMonitor: {
+    title: '订单实时监控',
+    docs: { prd: orderMonitorPrdRaw, spec: orderMonitorSpecRaw, ia: orderMonitorIaRaw }
+  },
+  staffScopeConfig: {
+    title: '配送员主责配置',
+    docs: { prd: staffScopePrdRaw, spec: staffScopeSpecRaw, ia: staffScopeIaRaw }
+  },
+  pointMerchant: {
+    title: '点位商家配置',
+    docs: { prd: pointMerchantPrdRaw, spec: pointMerchantSpecRaw, ia: pointMerchantIaRaw }
+  },
+  staff: {
+    title: '配送员名册',
+    docs: { prd: staffPrdRaw, spec: staffSpecRaw, ia: staffIaRaw }
+  }
+}
 const levelLabelMap = { AREA: '展区级', FLOOR: '楼层级', HALL: '展厅级' }
 
 const floorsByArea = Object.fromEntries(
@@ -57,6 +88,7 @@ const createMockStaffList = (count = 50) => {
 const staffList = ref(createMockStaffList(50))
 
 const activeTab = ref('staffScopeConfig')
+const currentDocBundle = computed(() => tabDocsMap[activeTab.value] || { title: '配送管理模块', docs: moduleDocs })
 
 const pmFilter = reactive({ area: '', floor: '', hall: '' })
 
@@ -85,19 +117,6 @@ const filteredMappings = computed(() => mappingList.value.filter((item) => {
   if (pmFilter.hall && !item.hall.toLowerCase().includes(pmFilter.hall.trim().toLowerCase())) return false
   return true
 }))
-
-const areaCompletionRate = computed(() => {
-  const hallCount = mappingList.value.length || 1
-  const configured = mappingList.value.filter((item) => item.merchantIds.length > 0).length
-  return Math.round((configured / hallCount) * 100)
-})
-
-const scopeCoverageRate = computed(() => {
-  const activeStaff = staffList.value.filter((item) => item.status === 'ACTIVE')
-  const activeCount = activeStaff.length || 1
-  const covered = activeStaff.filter(item => item.scopeHalls.length > 0 || item.scopeMerchants.length > 0).length
-  return Math.round((covered / activeCount) * 100)
-})
 
 const filteredStaffList = computed(() => {
   let list = staffList.value
@@ -433,36 +452,559 @@ const submitConfigMerchant = () => {
   configMerchantDialogVisible.value = false
   ElMessage.success(`成功为 ${selectedConfigStaffIds.value.length} 名配送员配置责任商家`)
 }
+
+const monitorColumns = [
+  { key: 'cutoff0900', label: '9点截单' },
+  { key: 'cutoff1000', label: '10点截单' },
+  { key: 'cutoff1030', label: '10:30截单' },
+  { key: 'cutoff1100', label: '11:00截单' },
+  { key: 'instantAfter11', label: '即时出单' }
+]
+const monitorDemoTime = ref('')
+const monitorTimeOptions = [
+  { label: '实时', value: '' },
+  { label: '08:50', value: '08:50' },
+  { label: '09:20', value: '09:20' },
+  { label: '10:05', value: '10:05' },
+  { label: '10:40', value: '10:40' },
+  { label: '11:10', value: '11:10' }
+]
+
+const createMonitorCell = (orders, portions) => ({ orders, portions })
+
+const createAreaMonitorSeed = () => ([
+  {
+    area: 'A区',
+    merchants: [
+      { id: 'A-1', name: '丽华快餐-A区', metrics: {
+        cutoff0900: createMonitorCell(12, 36),
+        cutoff1000: createMonitorCell(18, 52),
+        cutoff1030: createMonitorCell(26, 78),
+        cutoff1100: createMonitorCell(9, 24),
+        instantAfter11: createMonitorCell(3, 7)
+      } },
+      { id: 'A-2', name: '老广记-A区', metrics: {
+        cutoff0900: createMonitorCell(8, 21),
+        cutoff1000: createMonitorCell(15, 44),
+        cutoff1030: createMonitorCell(19, 57),
+        cutoff1100: createMonitorCell(6, 18),
+        instantAfter11: createMonitorCell(2, 5)
+      } },
+      { id: 'A-3', name: '香蕉叶-A区', metrics: {
+        cutoff0900: createMonitorCell(10, 28),
+        cutoff1000: createMonitorCell(11, 33),
+        cutoff1030: createMonitorCell(17, 49),
+        cutoff1100: createMonitorCell(4, 12),
+        instantAfter11: createMonitorCell(1, 2)
+      } },
+      { id: 'A-4', name: '肯德基-A区', metrics: {
+        cutoff0900: createMonitorCell(6, 14),
+        cutoff1000: createMonitorCell(9, 26),
+        cutoff1030: createMonitorCell(13, 40),
+        cutoff1100: createMonitorCell(5, 15),
+        instantAfter11: createMonitorCell(2, 6)
+      } }
+    ]
+  },
+  {
+    area: 'B区',
+    merchants: [
+      { id: 'B-1', name: '真功夫-B区', metrics: {
+        cutoff0900: createMonitorCell(11, 31),
+        cutoff1000: createMonitorCell(17, 48),
+        cutoff1030: createMonitorCell(21, 62),
+        cutoff1100: createMonitorCell(8, 23),
+        instantAfter11: createMonitorCell(4, 11)
+      } },
+      { id: 'B-2', name: '遇见小面-B区', metrics: {
+        cutoff0900: createMonitorCell(9, 24),
+        cutoff1000: createMonitorCell(13, 37),
+        cutoff1030: createMonitorCell(19, 56),
+        cutoff1100: createMonitorCell(7, 19),
+        instantAfter11: createMonitorCell(3, 8)
+      } },
+      { id: 'B-3', name: '木屋烧烤-B区', metrics: {
+        cutoff0900: createMonitorCell(7, 18),
+        cutoff1000: createMonitorCell(10, 27),
+        cutoff1030: createMonitorCell(15, 41),
+        cutoff1100: createMonitorCell(6, 16),
+        instantAfter11: createMonitorCell(2, 5)
+      } }
+    ]
+  },
+  {
+    area: 'C区',
+    merchants: [
+      { id: 'C-1', name: '新大地-C区', metrics: {
+        cutoff0900: createMonitorCell(16, 45),
+        cutoff1000: createMonitorCell(25, 73),
+        cutoff1030: createMonitorCell(31, 92),
+        cutoff1100: createMonitorCell(10, 28),
+        instantAfter11: createMonitorCell(4, 10)
+      } },
+      { id: 'C-2', name: '莱一煲-C区', metrics: {
+        cutoff0900: createMonitorCell(10, 29),
+        cutoff1000: createMonitorCell(15, 43),
+        cutoff1030: createMonitorCell(20, 58),
+        cutoff1100: createMonitorCell(8, 22),
+        instantAfter11: createMonitorCell(3, 8)
+      } },
+      { id: 'C-3', name: '云吞面-C区', metrics: {
+        cutoff0900: createMonitorCell(8, 22),
+        cutoff1000: createMonitorCell(12, 36),
+        cutoff1030: createMonitorCell(17, 51),
+        cutoff1100: createMonitorCell(6, 18),
+        instantAfter11: createMonitorCell(2, 6)
+      } }
+    ]
+  },
+  {
+    area: 'D区',
+    merchants: [
+      { id: 'D-1', name: '汤粉世家-D区', metrics: {
+        cutoff0900: createMonitorCell(7, 20),
+        cutoff1000: createMonitorCell(12, 35),
+        cutoff1030: createMonitorCell(16, 47),
+        cutoff1100: createMonitorCell(7, 21),
+        instantAfter11: createMonitorCell(3, 9)
+      } },
+      { id: 'D-2', name: '肯德基-D区', metrics: {
+        cutoff0900: createMonitorCell(9, 25),
+        cutoff1000: createMonitorCell(14, 39),
+        cutoff1030: createMonitorCell(18, 54),
+        cutoff1100: createMonitorCell(9, 27),
+        instantAfter11: createMonitorCell(4, 12)
+      } },
+      { id: 'D-3', name: '西贝-D区', metrics: {
+        cutoff0900: createMonitorCell(5, 14),
+        cutoff1000: createMonitorCell(9, 26),
+        cutoff1030: createMonitorCell(12, 38),
+        cutoff1100: createMonitorCell(5, 16),
+        instantAfter11: createMonitorCell(2, 7)
+      } }
+    ]
+  }
+])
+
+const cloneAreaMonitor = (source) => source.map((area) => ({
+  area: area.area,
+  merchants: area.merchants.map((merchant) => ({
+    id: merchant.id,
+    name: merchant.name,
+    metrics: Object.fromEntries(
+      monitorColumns.map((column) => [
+        column.key,
+        {
+          orders: merchant.metrics[column.key].orders,
+          portions: merchant.metrics[column.key].portions
+        }
+      ])
+    )
+  }))
+}))
+
+const orderMonitorAreas = ref(cloneAreaMonitor(createAreaMonitorSeed()))
+const expandedMonitorAreas = ref(['A区'])
+const changedMetricKeys = ref(new Set())
+const monitorCountdown = ref(60)
+const monitorLastRefresh = ref('')
+let monitorTimer = null
+
+const formatCurrentTime = () => new Date().toLocaleTimeString('zh-CN', { hour12: false })
+
+const parseTimeToMinutes = (value) => {
+  const [hours, minutes] = value.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+const getCurrentMinutes = () => {
+  if (monitorDemoTime.value) return parseTimeToMinutes(monitorDemoTime.value)
+  const now = new Date()
+  return now.getHours() * 60 + now.getMinutes()
+}
+
+const getPrimaryOpenColumnKey = () => {
+  const nowMinutes = getCurrentMinutes()
+  if (nowMinutes < parseTimeToMinutes('08:50')) return 'cutoff0900'
+  if (nowMinutes < parseTimeToMinutes('09:50')) return 'cutoff1000'
+  if (nowMinutes < parseTimeToMinutes('10:20')) return 'cutoff1030'
+  if (nowMinutes < parseTimeToMinutes('10:50')) return 'cutoff1100'
+  return 'instantAfter11'
+}
+
+const monitorColumnOrder = monitorColumns.map((column) => column.key)
+
+const currentActiveColumnKey = computed(() => getPrimaryOpenColumnKey())
+
+const monitorColumnDisplayStatus = computed(() => {
+  const primaryIndex = monitorColumnOrder.indexOf(currentActiveColumnKey.value)
+  return Object.fromEntries(
+    monitorColumnOrder.map((columnKey, index) => {
+      if (columnKey === currentActiveColumnKey.value) return [columnKey, 'active']
+      if (index < primaryIndex) return [columnKey, 'inactive']
+      return [columnKey, 'upcoming']
+    })
+  )
+})
+
+const getMonitorColumnClasses = (columnKey) => ({
+  'bg-slate-50/90': monitorColumnDisplayStatus.value[columnKey] === 'inactive',
+  'bg-orange-50/35': monitorColumnDisplayStatus.value[columnKey] === 'active',
+  'border-t-2 border-t-orange-300': monitorColumnDisplayStatus.value[columnKey] === 'active',
+  'text-slate-500': monitorColumnDisplayStatus.value[columnKey] === 'inactive'
+})
+
+const buildScenarioMetrics = (orders, portions, columnKey, primaryKey) => {
+  if (columnKey === primaryKey) return createMonitorCell(orders, portions)
+
+  const primaryIndex = monitorColumnOrder.indexOf(primaryKey)
+  const currentIndex = monitorColumnOrder.indexOf(columnKey)
+
+  if (currentIndex < primaryIndex) {
+    return createMonitorCell(Math.max(0, Math.round(orders * 0.92)), Math.max(0, Math.round(portions * 0.92)))
+  }
+
+  return createMonitorCell(0, 0)
+}
+
+const normalizeMonitorDataByScenario = () => {
+  const primaryColumnKey = getPrimaryOpenColumnKey()
+  const baseData = createAreaMonitorSeed()
+
+  orderMonitorAreas.value = baseData.map((area) => ({
+    area: area.area,
+    merchants: area.merchants.map((merchant) => ({
+      id: merchant.id,
+      name: merchant.name,
+      metrics: Object.fromEntries(
+        monitorColumns.map((column) => {
+          const rawCell = merchant.metrics[column.key]
+          return [column.key, buildScenarioMetrics(rawCell.orders, rawCell.portions, column.key, primaryColumnKey)]
+        })
+      )
+    }))
+  }))
+
+  changedMetricKeys.value = new Set()
+}
+
+const updateMonitorLastRefresh = () => {
+  monitorLastRefresh.value = formatCurrentTime()
+}
+
+const areaMonitorSummaries = computed(() => orderMonitorAreas.value.map((area) => ({
+  area: area.area,
+  totals: Object.fromEntries(
+    monitorColumns.map((column) => {
+      const summary = area.merchants.reduce((acc, merchant) => {
+        acc.orders += merchant.metrics[column.key].orders
+        acc.portions += merchant.metrics[column.key].portions
+        return acc
+      }, { orders: 0, portions: 0 })
+
+      return [column.key, summary]
+    })
+  )
+})))
+
+const isMetricChanged = (entityKey, columnKey, metricKey) => changedMetricKeys.value.has(`${entityKey}:${columnKey}:${metricKey}`)
+
+const toggleMonitorArea = (area) => {
+  if (expandedMonitorAreas.value.includes(area)) {
+    expandedMonitorAreas.value = expandedMonitorAreas.value.filter((item) => item !== area)
+    return
+  }
+  expandedMonitorAreas.value = [...expandedMonitorAreas.value, area]
+}
+
+const simulateMonitorRefresh = () => {
+  const previousSnapshot = cloneAreaMonitor(orderMonitorAreas.value)
+  const nextSnapshot = cloneAreaMonitor(orderMonitorAreas.value)
+  const nextChangedKeys = new Set()
+  const primaryColumnKey = getPrimaryOpenColumnKey()
+
+  nextSnapshot.forEach((area, areaIndex) => {
+    area.merchants.forEach((merchant, merchantIndex) => {
+      monitorColumns.forEach((column, columnIndex) => {
+        const baseDeltaSeed = (areaIndex + 1) * 7 + (merchantIndex + 2) * 3 + (columnIndex + 1)
+        const cell = merchant.metrics[column.key]
+        let orderDelta = 0
+        let portionDelta = 0
+
+        if (column.key === primaryColumnKey) {
+          orderDelta = (baseDeltaSeed % 3) + 1
+          portionDelta = orderDelta * (2 + (baseDeltaSeed % 3))
+        } else if (monitorColumnOrder.indexOf(column.key) < monitorColumnOrder.indexOf(primaryColumnKey)) {
+          orderDelta = baseDeltaSeed % 2 === 0 ? -1 : 0
+          portionDelta = orderDelta === 0 ? 0 : -(1 + (baseDeltaSeed % 2))
+        } else {
+          cell.orders = 0
+          cell.portions = 0
+          const prevCell = previousSnapshot[areaIndex].merchants[merchantIndex].metrics[column.key]
+          if (cell.orders !== prevCell.orders) {
+            nextChangedKeys.add(`${merchant.id}:${column.key}:orders`)
+          }
+          if (cell.portions !== prevCell.portions) {
+            nextChangedKeys.add(`${merchant.id}:${column.key}:portions`)
+          }
+          return
+        }
+
+        cell.orders = Math.max(0, cell.orders + orderDelta)
+        cell.portions = Math.max(cell.orders, cell.portions + portionDelta)
+
+        const prevCell = previousSnapshot[areaIndex].merchants[merchantIndex].metrics[column.key]
+        if (cell.orders !== prevCell.orders) {
+          nextChangedKeys.add(`${merchant.id}:${column.key}:orders`)
+        }
+        if (cell.portions !== prevCell.portions) {
+          nextChangedKeys.add(`${merchant.id}:${column.key}:portions`)
+        }
+      })
+    })
+  })
+
+  nextSnapshot.forEach((area, areaIndex) => {
+    monitorColumns.forEach((column) => {
+      const previousTotals = previousSnapshot[areaIndex].merchants.reduce((acc, merchant) => {
+        acc.orders += merchant.metrics[column.key].orders
+        acc.portions += merchant.metrics[column.key].portions
+        return acc
+      }, { orders: 0, portions: 0 })
+
+      const nextTotals = area.merchants.reduce((acc, merchant) => {
+        acc.orders += merchant.metrics[column.key].orders
+        acc.portions += merchant.metrics[column.key].portions
+        return acc
+      }, { orders: 0, portions: 0 })
+
+      if (nextTotals.orders !== previousTotals.orders) {
+        nextChangedKeys.add(`${area.area}:${column.key}:orders`)
+      }
+      if (nextTotals.portions !== previousTotals.portions) {
+        nextChangedKeys.add(`${area.area}:${column.key}:portions`)
+      }
+    })
+  })
+
+  orderMonitorAreas.value = nextSnapshot
+  changedMetricKeys.value = nextChangedKeys
+  monitorCountdown.value = 60
+  updateMonitorLastRefresh()
+}
+
+const manualRefreshMonitor = () => {
+  simulateMonitorRefresh()
+  ElMessage.success('订单监控原型数据已刷新')
+}
+
+onMounted(() => {
+  normalizeMonitorDataByScenario()
+  updateMonitorLastRefresh()
+  monitorTimer = setInterval(() => {
+    monitorCountdown.value -= 1
+    if (monitorCountdown.value <= 0) {
+      simulateMonitorRefresh()
+    }
+  }, 1000)
+})
+
+onUnmounted(() => {
+  if (monitorTimer) clearInterval(monitorTimer)
+})
+
+watch(monitorDemoTime, () => {
+  normalizeMonitorDataByScenario()
+  monitorCountdown.value = 60
+  updateMonitorLastRefresh()
+})
 </script>
 
 <template>
   <div class="mx-auto max-w-[1440px] space-y-6">
-    <!-- Header Area: Borderless card with modern shadow -->
-    <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-      <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h2 class="text-2xl font-bold tracking-tight text-slate-900">配送管理中枢</h2>
-          <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
-            统一维护点位商家映射、配送员账号和主责范围，确保高峰时段配置可控、责任可追踪。
-          </p>
-        </div>
-
-        <div class="flex gap-4">
-          <div class="metric-card px-5 py-3 flex-1 min-w-[140px]">
-            <div class="text-xs text-slate-500 whitespace-nowrap">点位配置完成率</div>
-            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ areaCompletionRate }}%</div>
-          </div>
-          <div class="metric-card px-5 py-3 flex-1 min-w-[140px]">
-            <div class="text-xs text-slate-500 whitespace-nowrap">主责覆盖率</div>
-            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ scopeCoverageRate }}%</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Main Content Area -->
     <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
       <el-tabs v-model="activeTab" class="custom-tabs">
+        <el-tab-pane label="订单实时监控" name="preCutoffOrderMonitor">
+          <div class="space-y-5">
+            <div class="rounded-2xl bg-slate-50/80 p-5 ring-1 ring-slate-200">
+              <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <h3 class="text-lg font-bold tracking-tight text-slate-900">订单实时监控</h3>
+
+                <div class="flex flex-wrap items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
+                  <div class="min-w-[128px]">
+                    <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">演示时间</div>
+                    <el-select v-model="monitorDemoTime" class="mt-1 !w-[120px]">
+                      <el-option
+                        v-for="item in monitorTimeOptions"
+                        :key="`${item.label}-${item.value}`"
+                        :label="item.label"
+                        :value="item.value"
+                      />
+                    </el-select>
+                  </div>
+                  <div class="h-8 w-px bg-slate-200"></div>
+                  <div class="min-w-[140px]">
+                    <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">最新刷新</div>
+                    <div class="mt-1 text-base font-semibold text-slate-900">{{ monitorLastRefresh }}</div>
+                  </div>
+                  <div class="h-8 w-px bg-slate-200"></div>
+                  <div class="min-w-[150px]">
+                    <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">自动刷新</div>
+                    <div class="mt-1 text-base font-semibold text-slate-900">{{ monitorCountdown }} 秒后刷新</div>
+                  </div>
+                  <el-button
+                    type="primary"
+                    :icon="Refresh"
+                    class="!ml-auto !rounded-lg !px-4"
+                    @click="manualRefreshMonitor"
+                  >
+                    立即刷新
+                  </el-button>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-for="summary in areaMonitorSummaries"
+              :key="summary.area"
+              class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200"
+            >
+              <button
+                type="button"
+                class="flex w-full items-center justify-between gap-4 border-b border-slate-200 bg-slate-50/70 px-5 py-4 text-left transition-colors hover:bg-slate-100"
+                @click="toggleMonitorArea(summary.area)"
+              >
+                <div class="flex min-w-0 items-center gap-4">
+                  <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">
+                    {{ summary.area.replace('区', '') }}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-base font-semibold text-slate-900">{{ summary.area }}</div>
+                    <div class="mt-1 text-xs text-slate-500">展开查看该区各商家订单与餐品份数</div>
+                  </div>
+                </div>
+
+                <div class="hidden flex-1 items-center justify-end gap-2 xl:flex">
+                  <div
+                    v-for="column in monitorColumns"
+                    :key="column.key"
+                    class="min-w-[124px] px-3 py-1.5 text-left"
+                  >
+                    <div class="truncate text-[11px] font-semibold text-slate-400">{{ column.label }}</div>
+                    <div class="mt-1 flex items-baseline gap-1.5">
+                      <span
+                        class="text-sm font-bold"
+                        :class="isMetricChanged(summary.area, column.key, 'orders') ? 'text-rose-600' : 'text-slate-900'"
+                      >
+                        {{ summary.totals[column.key].orders }}
+                      </span>
+                      <span class="text-xs text-slate-400">单</span>
+                    </div>
+                    <div class="mt-0.5 text-xs">
+                      <span
+                        class="font-semibold"
+                        :class="isMetricChanged(summary.area, column.key, 'portions') ? 'text-rose-600' : 'text-slate-500'"
+                      >
+                        {{ summary.totals[column.key].portions }}份
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <span class="text-xs font-medium text-slate-400">{{ expandedMonitorAreas.includes(summary.area) ? '收起明细' : '展开商家' }}</span>
+                  <el-icon
+                    class="text-slate-400 transition-transform"
+                    :class="expandedMonitorAreas.includes(summary.area) ? 'rotate-90' : ''"
+                  >
+                    <ArrowRight />
+                  </el-icon>
+                </div>
+              </button>
+
+              <div v-if="expandedMonitorAreas.includes(summary.area)" class="p-5">
+                <div class="overflow-hidden rounded-xl border border-slate-200">
+                  <div class="monitor-grid bg-slate-100 text-[12px] font-semibold text-slate-600">
+                    <div class="border-r border-slate-200 px-4 py-3">商家</div>
+                    <div
+                      v-for="column in monitorColumns"
+                      :key="column.key"
+                      class="border-r border-slate-200 px-3 py-3 last:border-r-0"
+                      :class="getMonitorColumnClasses(column.key)"
+                    >
+                      {{ column.label }}
+                    </div>
+                  </div>
+
+                  <div
+                    v-for="merchant in orderMonitorAreas.find((item) => item.area === summary.area)?.merchants || []"
+                    :key="merchant.id"
+                    class="monitor-grid border-t border-slate-200 bg-white text-sm"
+                  >
+                    <div class="border-r border-slate-200 px-4 py-4">
+                      <div class="font-semibold text-slate-900">{{ merchant.name }}</div>
+                      <div class="mt-1 text-xs text-slate-400">已支付未出单</div>
+                    </div>
+                    <div
+                      v-for="column in monitorColumns"
+                      :key="`${merchant.id}-${column.key}`"
+                      class="border-r border-slate-200 px-3 py-4 last:border-r-0"
+                      :class="getMonitorColumnClasses(column.key)"
+                    >
+                      <div class="flex items-end gap-1.5">
+                        <span
+                          class="text-lg font-bold leading-none"
+                          :class="isMetricChanged(merchant.id, column.key, 'orders') ? 'text-rose-600' : 'text-slate-900'"
+                        >
+                          {{ merchant.metrics[column.key].orders }}
+                        </span>
+                        <span class="mb-0.5 text-[11px] text-slate-400">单</span>
+                      </div>
+                      <div class="mt-2 text-xs">
+                        <span
+                          class="font-semibold"
+                          :class="isMetricChanged(merchant.id, column.key, 'portions') ? 'text-rose-600' : 'text-slate-500'"
+                        >
+                          {{ merchant.metrics[column.key].portions }}份
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="monitor-grid border-t border-slate-200 bg-slate-50 text-sm font-semibold">
+                    <div class="border-r border-slate-200 px-4 py-3 text-slate-700">{{ summary.area }}小计</div>
+                    <div
+                      v-for="column in monitorColumns"
+                      :key="`${summary.area}-${column.key}-summary`"
+                      class="border-r border-slate-200 px-3 py-3 last:border-r-0"
+                      :class="getMonitorColumnClasses(column.key)"
+                    >
+                      <div class="flex items-end gap-1.5">
+                        <span
+                          class="text-base font-bold"
+                          :class="isMetricChanged(summary.area, column.key, 'orders') ? 'text-rose-600' : 'text-slate-900'"
+                        >
+                          {{ summary.totals[column.key].orders }}
+                        </span>
+                        <span class="text-[11px] text-slate-400">单</span>
+                      </div>
+                      <div class="mt-1 text-xs">
+                        <span
+                          class="font-semibold"
+                          :class="isMetricChanged(summary.area, column.key, 'portions') ? 'text-rose-600' : 'text-slate-500'"
+                        >
+                          {{ summary.totals[column.key].portions }}份
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+
         <el-tab-pane label="配送员主责配置" name="staffScopeConfig">
           <div class="mb-5 space-y-4 rounded-xl bg-slate-50/50 p-4 ring-1 ring-slate-100">
             <div class="grid gap-3 lg:grid-cols-[auto_1fr]">
@@ -712,7 +1254,7 @@ const submitConfigMerchant = () => {
       </el-tabs>
     </div>
 
-    <DocViewer title="配送管理模块" :docs="docs" />
+    <DocViewer :title="currentDocBundle.title" :docs="currentDocBundle.docs" />
 
     <el-dialog v-model="mappingDialogVisible" title="配置点位商家映射" width="560px">
       <el-form label-position="top">
@@ -960,3 +1502,10 @@ const submitConfigMerchant = () => {
     </el-dialog>
   </div>
 </template>
+
+<style scoped>
+.monitor-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.25fr) repeat(5, minmax(140px, 1fr));
+}
+</style>
